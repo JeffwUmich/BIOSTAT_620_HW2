@@ -1,0 +1,47 @@
+---
+title: "HW2"
+author: "Jeffrey Waters"
+date: "2024-03-01"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(systemfit)
+library(readxl)
+library(tidyverse)
+library(lmtest)
+```
+
+```{r}
+data <- read_excel("ScreenTime_SPH.xlsx")
+data$TS_lag1 <- lag(data$Total.ST.min, n=1) #Y_1(t-1)
+data$SS_lag1 <- lag(data$Social.ST.min, n=1) #Y_2(t-1)
+data$isWeekday <- ifelse(
+  weekdays(data$Date) %in% c("Saturday", "Sunday"), 0, 1)   #X(t)
+
+data$afterHoliday <- ifelse(
+  data$Date >= as.POSIXct("2024-01-10", tz="UTC"), 1, 0) #Z(t)
+```
+
+
+
+```{r}
+model <- systemfit(
+  list(
+    m1 = Total.ST.min ~ TS_lag1 + isWeekday + afterHoliday,
+    m2 = Social.ST.min ~ SS_lag1 + isWeekday + afterHoliday
+  ),
+  method="SUR",
+  data=data
+)
+
+summary(model)
+```
+
+### None of the Covariates are significant for both models(p-values >= 0.05)
+```{r}
+linearHypothesis(model, c("m1_afterHoliday=0", "m2_afterHoliday=0"))
+```
+
+
+### Based on the p-value of 0.2741, there is no statistical evidence to suggest afterHoliday is an important predictor(b3 or g3 not equal to 0) of either Total Screen time(mins) or Social Screen Time(mins)
